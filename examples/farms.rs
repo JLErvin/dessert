@@ -4,7 +4,6 @@ use std::{env, fs::File, io::Write, path::Path};
 #[derive(Debug, Default, Clone)]
 struct FarmSimState {
     wheat: u32,
-    farms: usize,
     deliveries_per_crop: u32,
     load_size: u32,
     crop_duration: f64,
