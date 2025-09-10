@@ -34,8 +34,8 @@ enum FarmEvent {
     WalkEmptyToFarm { at: Timestamp, remaining: u32 },
     ArriveEmptyFarm { at: Timestamp, remaining: u32 },
     // Farming phase
-    Start { at: Timestamp },
-    Done { at: Timestamp },
+    ProcessStart { at: Timestamp },
+    ProcessEnd { at: Timestamp },
     // Loaded walk to stockpile and arrival (delivery)
     WalkLoadedToStockpile { at: Timestamp, remaining: u32 },
     ArriveLoadedToStockpile { at: Timestamp, remaining: u32 },
@@ -47,7 +47,8 @@ enum MillEvent {
     ArriveEmptyStockpile { at: Timestamp },
     WalkLoadedToMill { at: Timestamp },
     ArriveLoadedMill { at: Timestamp },
-    ProcessDone { at: Timestamp },
+    ProcessStart { at: Timestamp },
+    ProcessEnd { at: Timestamp },
     WalkLoadedToStockpile { at: Timestamp },
     ArriveLoadedStockpile { at: Timestamp },
     WalkEmptyToMill { at: Timestamp },
@@ -60,7 +61,8 @@ enum BakeryEvent {
     ArriveEmptyStockpile { at: Timestamp },
     WalkLoadedToBakery { at: Timestamp },
     ArriveLoadedBakery { at: Timestamp },
-    ProcessDone { at: Timestamp },
+    ProcessStart { at: Timestamp },
+    ProcessEnd { at: Timestamp },
     WalkLoadedToGranary { at: Timestamp },
     ArriveLoadedGranary { at: Timestamp },
     WalkEmptyToBakery { at: Timestamp },
@@ -80,8 +82,8 @@ impl Event<SimState> for PipelineEvent {
             PipelineEvent::Farm(ev) => match ev {
                 FarmEvent::WalkEmptyToFarm { at, .. }
                 | FarmEvent::ArriveEmptyFarm { at, .. }
-                | FarmEvent::Start { at }
-                | FarmEvent::Done { at }
+                | FarmEvent::ProcessStart { at }
+                | FarmEvent::ProcessEnd { at }
                 | FarmEvent::WalkLoadedToStockpile { at, .. }
                 | FarmEvent::ArriveLoadedToStockpile { at, .. } => at,
             },
@@ -90,7 +92,8 @@ impl Event<SimState> for PipelineEvent {
                 | MillEvent::ArriveEmptyStockpile { at }
                 | MillEvent::WalkLoadedToMill { at }
                 | MillEvent::ArriveLoadedMill { at }
-                | MillEvent::ProcessDone { at }
+                | MillEvent::ProcessStart { at }
+                | MillEvent::ProcessEnd { at }
                 | MillEvent::WalkLoadedToStockpile { at }
                 | MillEvent::ArriveLoadedStockpile { at }
                 | MillEvent::WalkEmptyToMill { at }
@@ -101,7 +104,8 @@ impl Event<SimState> for PipelineEvent {
                 | BakeryEvent::ArriveEmptyStockpile { at }
                 | BakeryEvent::WalkLoadedToBakery { at }
                 | BakeryEvent::ArriveLoadedBakery { at }
-                | BakeryEvent::ProcessDone { at }
+                | BakeryEvent::ProcessStart { at }
+                | BakeryEvent::ProcessEnd { at }
                 | BakeryEvent::WalkLoadedToGranary { at }
                 | BakeryEvent::ArriveLoadedGranary { at }
                 | BakeryEvent::WalkEmptyToBakery { at }
@@ -139,14 +143,14 @@ fn handle_farm_event(state: &mut State<SimState, PipelineEvent>, ev: FarmEvent) 
                     remaining,
                 }));
             } else {
-                state.schedule(PipelineEvent::Farm(FarmEvent::Start { at }));
+                state.schedule(PipelineEvent::Farm(FarmEvent::ProcessStart { at }));
             }
         }
-        FarmEvent::Start { at } => {
-            let done_at = at + state.state().crop_duration;
-            state.schedule(PipelineEvent::Farm(FarmEvent::Done { at: done_at }));
+        FarmEvent::ProcessStart { at } => {
+            let end_at = at + state.state().crop_duration;
+            state.schedule(PipelineEvent::Farm(FarmEvent::ProcessEnd { at: end_at }));
         }
-        FarmEvent::Done { at } => {
+        FarmEvent::ProcessEnd { at } => {
             state.schedule(PipelineEvent::Farm(FarmEvent::WalkLoadedToStockpile {
                 at,
                 remaining: state.state().deliveries_per_crop,
@@ -207,11 +211,14 @@ fn handle_mill_event(state: &mut State<SimState, PipelineEvent>, ev: MillEvent) 
             state.schedule(PipelineEvent::Mill(MillEvent::ArriveLoadedMill { at: t }));
         }
         MillEvent::ArriveLoadedMill { at } => {
-            state.schedule(PipelineEvent::Mill(MillEvent::ProcessDone {
+            state.schedule(PipelineEvent::Mill(MillEvent::ProcessStart { at }));
+        }
+        MillEvent::ProcessStart { at } => {
+            state.schedule(PipelineEvent::Mill(MillEvent::ProcessEnd {
                 at: at + state.state().mill_job_time,
             }));
         }
-        MillEvent::ProcessDone { at } => {
+        MillEvent::ProcessEnd { at } => {
             // Start loaded walk back to stockpile (travel handled in the Walk event)
             state.schedule(PipelineEvent::Mill(MillEvent::WalkLoadedToStockpile { at }));
         }
@@ -285,11 +292,14 @@ fn handle_bakery_event(state: &mut State<SimState, PipelineEvent>, ev: BakeryEve
             }));
         }
         BakeryEvent::ArriveLoadedBakery { at } => {
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::ProcessDone {
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::ProcessStart { at }));
+        }
+        BakeryEvent::ProcessStart { at } => {
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::ProcessEnd {
                 at: at + state.state().bakery_job_time,
             }));
         }
-        BakeryEvent::ProcessDone { at } => {
+        BakeryEvent::ProcessEnd { at } => {
             // Start loaded walk to granary (travel handled in Walk event)
             state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkLoadedToGranary {
                 at,
