@@ -1,5 +1,10 @@
 name: CI
 
+env:
+  # Treat all Rust warnings as errors in CI (builds, tests, clippy, examples)
+  RUSTFLAGS: -D warnings
+  RUSTDOCFLAGS: -D warnings
+
 on:
   push:
     branches: ["**"]
@@ -50,4 +55,3 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: cargo test
         run: cargo test --all-features --workspace --quiet
-
