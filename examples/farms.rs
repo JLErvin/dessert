@@ -39,7 +39,9 @@ impl Event<FarmSimState> for FarmEvent {
             FarmEvent::WalkToFarm { at } => {
                 let t_walk = if state.state().worker_speed_tiles_per_month > 0.0 {
                     state.state().farm_distance_tiles / state.state().worker_speed_tiles_per_month
-                } else { 0.0 };
+                } else {
+                    0.0
+                };
                 state.schedule(FarmEvent::StartCrop { at: at + t_walk });
             }
             FarmEvent::StartCrop { at } => {
@@ -53,15 +55,28 @@ impl Event<FarmSimState> for FarmEvent {
             FarmEvent::WalkToStockpile { at, remaining } => {
                 let t_walk = if state.state().worker_speed_tiles_per_month > 0.0 {
                     state.state().farm_distance_tiles / state.state().worker_speed_tiles_per_month
-                } else { 0.0 };
-                state.schedule(FarmEvent::Deliver { at: at + t_walk, remaining });
+                } else {
+                    0.0
+                };
+                state.schedule(FarmEvent::Deliver {
+                    at: at + t_walk,
+                    remaining,
+                });
             }
             FarmEvent::Deliver { at, remaining } => {
                 let load = state.state().load_size;
                 state.state_mut().wheat += load;
-                println!("t={:.2} mo | delivery: +{} wheat (total {})", at, load, state.state().wheat);
+                println!(
+                    "t={:.2} mo | delivery: +{} wheat (total {})",
+                    at,
+                    load,
+                    state.state().wheat
+                );
                 if remaining > 1 {
-                    state.schedule(FarmEvent::WalkBackToFarm { at, remaining: remaining - 1 });
+                    state.schedule(FarmEvent::WalkBackToFarm {
+                        at,
+                        remaining: remaining - 1,
+                    });
                 } else {
                     // After final delivery, walk back to farm and start next crop
                     state.schedule(FarmEvent::WalkToFarm { at });
@@ -70,8 +85,13 @@ impl Event<FarmSimState> for FarmEvent {
             FarmEvent::WalkBackToFarm { at, remaining } => {
                 let t_walk = if state.state().worker_speed_tiles_per_month > 0.0 {
                     state.state().farm_distance_tiles / state.state().worker_speed_tiles_per_month
-                } else { 0.0 };
-                state.schedule(FarmEvent::WalkToStockpile { at: at + t_walk, remaining });
+                } else {
+                    0.0
+                };
+                state.schedule(FarmEvent::WalkToStockpile {
+                    at: at + t_walk,
+                    remaining,
+                });
             }
         }
     }
@@ -138,7 +158,10 @@ fn main() {
         farms, months, crop_duration, deliveries_per_crop, load_size, farm_distance_tiles, worker_speed_tiles_per_month
     );
     engine.run_until(months);
-    println!("\nEnd of simulation: wheat total = {}", engine.state().wheat);
+    println!(
+        "\nEnd of simulation: wheat total = {}",
+        engine.state().wheat
+    );
 
     if let Some(path) = csv_file.as_deref() {
         if let Err(e) = write_history_csv(path, engine.history()) {
@@ -161,7 +184,12 @@ fn main() {
     }
 }
 
-fn ascii_plot_wheat(history: &[State<FarmSimState, FarmEvent>], horizon: f64, width: usize, height: usize) {
+fn ascii_plot_wheat(
+    history: &[State<FarmSimState, FarmEvent>],
+    horizon: f64,
+    width: usize,
+    height: usize,
+) {
     if history.is_empty() || width < 10 || height < 5 || horizon <= 0.0 {
         return;
     }
@@ -172,20 +200,32 @@ fn ascii_plot_wheat(history: &[State<FarmSimState, FarmEvent>], horizon: f64, wi
     let ymax = ymax.max(1);
     let mut grid = vec![vec![' '; width]; height];
     // Axes: x-axis bottom row
-    for x in 0..width { grid[height - 1][x] = '-'; }
+    for x in 0..width {
+        grid[height - 1][x] = '-';
+    }
     grid[height - 1][0] = '+';
     // Y-axis at left
-    for y in 0..height { grid[y][0] = '|'; }
+    for y in 0..height {
+        grid[y][0] = '|';
+    }
 
     // Plot step-like series by sampling columns
     let mut idx = 0usize;
     for x in 0..width {
         let t = (x as f64) * horizon / (width.saturating_sub(1) as f64);
-        while idx + 1 < history.len() && history[idx + 1].now() <= t { idx += 1; }
+        while idx + 1 < history.len() && history[idx + 1].now() <= t {
+            idx += 1;
+        }
         let val = history[idx].state().wheat;
-        let y = if ymax == 0 { 0 } else { (val as f64 * (height as f64 - 2.0) / ymax as f64).round() as usize };
+        let y = if ymax == 0 {
+            0
+        } else {
+            (val as f64 * (height as f64 - 2.0) / ymax as f64).round() as usize
+        };
         let y = (height - 2).saturating_sub(y);
-        if x < width && y < height { grid[y][x] = '#'; }
+        if x < width && y < height {
+            grid[y][x] = '#';
+        }
     }
 
     // Print with simple labels
@@ -193,10 +233,18 @@ fn ascii_plot_wheat(history: &[State<FarmSimState, FarmEvent>], horizon: f64, wi
         let row: String = grid[y].iter().collect();
         println!("{}", row);
     }
-    println!("0 mo{}{:>6.2} mo  ymax: {} wheat", " ".repeat(width.saturating_sub(19)), horizon, ymax);
+    println!(
+        "0 mo{}{:>6.2} mo  ymax: {} wheat",
+        " ".repeat(width.saturating_sub(19)),
+        horizon,
+        ymax
+    );
 }
 
-fn write_history_csv<P: AsRef<Path>>(path: P, history: &[State<FarmSimState, FarmEvent>]) -> std::io::Result<()> {
+fn write_history_csv<P: AsRef<Path>>(
+    path: P,
+    history: &[State<FarmSimState, FarmEvent>],
+) -> std::io::Result<()> {
     let mut f = File::create(path)?;
     // Match Python plotter headers for compatibility
     writeln!(f, "months,wheat,flour,bread")?;

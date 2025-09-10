@@ -127,11 +127,17 @@ fn handle_farm_event(state: &mut State<SimState, PipelineEvent>, ev: FarmEvent) 
                 state.state().farm_empty_speed_tiles_per_month,
             );
             let arrive_at = at + t_walk;
-            state.schedule(PipelineEvent::Farm(FarmEvent::ArriveEmptyFarm { at: arrive_at, remaining }));
+            state.schedule(PipelineEvent::Farm(FarmEvent::ArriveEmptyFarm {
+                at: arrive_at,
+                remaining,
+            }));
         }
         FarmEvent::ArriveEmptyFarm { at, remaining } => {
             if remaining > 0 {
-                state.schedule(PipelineEvent::Farm(FarmEvent::WalkLoadedToStockpile { at, remaining }));
+                state.schedule(PipelineEvent::Farm(FarmEvent::WalkLoadedToStockpile {
+                    at,
+                    remaining,
+                }));
             } else {
                 state.schedule(PipelineEvent::Farm(FarmEvent::Start { at }));
             }
@@ -141,7 +147,10 @@ fn handle_farm_event(state: &mut State<SimState, PipelineEvent>, ev: FarmEvent) 
             state.schedule(PipelineEvent::Farm(FarmEvent::Done { at: done_at }));
         }
         FarmEvent::Done { at } => {
-            state.schedule(PipelineEvent::Farm(FarmEvent::WalkLoadedToStockpile { at, remaining: state.state().deliveries_per_crop }));
+            state.schedule(PipelineEvent::Farm(FarmEvent::WalkLoadedToStockpile {
+                at,
+                remaining: state.state().deliveries_per_crop,
+            }));
         }
         FarmEvent::WalkLoadedToStockpile { at, remaining } => {
             let t = at
@@ -149,14 +158,20 @@ fn handle_farm_event(state: &mut State<SimState, PipelineEvent>, ev: FarmEvent) 
                     state.state().farm_distance_tiles,
                     state.state().farm_loaded_speed_tiles_per_month,
                 );
-            state.schedule(PipelineEvent::Farm(FarmEvent::ArriveLoadedToStockpile { at: t, remaining }));
+            state.schedule(PipelineEvent::Farm(FarmEvent::ArriveLoadedToStockpile {
+                at: t,
+                remaining,
+            }));
         }
         FarmEvent::ArriveLoadedToStockpile { at, remaining } => {
             let add = state.state().load_size_wheat;
             state.state_mut().wheat = state.state().wheat + add;
             try_start_mill_jobs(state);
             let next_remaining = if remaining > 1 { remaining - 1 } else { 0 };
-            state.schedule(PipelineEvent::Farm(FarmEvent::WalkEmptyToFarm { at, remaining: next_remaining }));
+            state.schedule(PipelineEvent::Farm(FarmEvent::WalkEmptyToFarm {
+                at,
+                remaining: next_remaining,
+            }));
         }
     }
 }
@@ -164,8 +179,14 @@ fn handle_farm_event(state: &mut State<SimState, PipelineEvent>, ev: FarmEvent) 
 fn handle_mill_event(state: &mut State<SimState, PipelineEvent>, ev: MillEvent) {
     match ev {
         MillEvent::WalkEmptyToStockpile { at } => {
-            let t = at + travel_time(state.state().mill_distance_tiles, state.state().mill_empty_speed_tiles_per_month);
-            state.schedule(PipelineEvent::Mill(MillEvent::ArriveEmptyStockpile { at: t }));
+            let t = at
+                + travel_time(
+                    state.state().mill_distance_tiles,
+                    state.state().mill_empty_speed_tiles_per_month,
+                );
+            state.schedule(PipelineEvent::Mill(MillEvent::ArriveEmptyStockpile {
+                at: t,
+            }));
         }
         MillEvent::ArriveEmptyStockpile { at } => {
             if state.state().wheat > 0 {
@@ -178,28 +199,48 @@ fn handle_mill_event(state: &mut State<SimState, PipelineEvent>, ev: MillEvent) 
             }
         }
         MillEvent::WalkLoadedToMill { at } => {
-            let t = at + travel_time(state.state().mill_distance_tiles, state.state().mill_loaded_speed_tiles_per_month);
+            let t = at
+                + travel_time(
+                    state.state().mill_distance_tiles,
+                    state.state().mill_loaded_speed_tiles_per_month,
+                );
             state.schedule(PipelineEvent::Mill(MillEvent::ArriveLoadedMill { at: t }));
         }
         MillEvent::ArriveLoadedMill { at } => {
-            state.schedule(PipelineEvent::Mill(MillEvent::ProcessDone { at: at + state.state().mill_job_time }));
+            state.schedule(PipelineEvent::Mill(MillEvent::ProcessDone {
+                at: at + state.state().mill_job_time,
+            }));
         }
         MillEvent::ProcessDone { at } => {
             // Start loaded walk back to stockpile (travel handled in the Walk event)
             state.schedule(PipelineEvent::Mill(MillEvent::WalkLoadedToStockpile { at }));
         }
         MillEvent::WalkLoadedToStockpile { at } => {
-            let t = at + travel_time(state.state().mill_distance_tiles, state.state().mill_loaded_speed_tiles_per_month);
-            state.schedule(PipelineEvent::Mill(MillEvent::ArriveLoadedStockpile { at: t }));
+            let t = at
+                + travel_time(
+                    state.state().mill_distance_tiles,
+                    state.state().mill_loaded_speed_tiles_per_month,
+                );
+            state.schedule(PipelineEvent::Mill(MillEvent::ArriveLoadedStockpile {
+                at: t,
+            }));
         }
         MillEvent::ArriveLoadedStockpile { at: _ } => {
             state.state_mut().flour += 1;
             try_start_bakery_jobs(state);
-            let t = state.now() + travel_time(state.state().mill_distance_tiles, state.state().mill_empty_speed_tiles_per_month);
+            let t = state.now()
+                + travel_time(
+                    state.state().mill_distance_tiles,
+                    state.state().mill_empty_speed_tiles_per_month,
+                );
             state.schedule(PipelineEvent::Mill(MillEvent::WalkEmptyToMill { at: t }));
         }
         MillEvent::WalkEmptyToMill { at } => {
-            let t = at + travel_time(state.state().mill_distance_tiles, state.state().mill_empty_speed_tiles_per_month);
+            let t = at
+                + travel_time(
+                    state.state().mill_distance_tiles,
+                    state.state().mill_empty_speed_tiles_per_month,
+                );
             state.schedule(PipelineEvent::Mill(MillEvent::ArriveEmptyMill { at: t }));
         }
         MillEvent::ArriveEmptyMill { at: _ } => {
@@ -212,42 +253,78 @@ fn handle_mill_event(state: &mut State<SimState, PipelineEvent>, ev: MillEvent) 
 fn handle_bakery_event(state: &mut State<SimState, PipelineEvent>, ev: BakeryEvent) {
     match ev {
         BakeryEvent::WalkEmptyToStockpile { at } => {
-            let t = at + travel_time(state.state().bakery_distance_tiles, state.state().bakery_empty_speed_tiles_per_month);
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveEmptyStockpile { at: t }));
+            let t = at
+                + travel_time(
+                    state.state().bakery_distance_tiles,
+                    state.state().bakery_empty_speed_tiles_per_month,
+                );
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveEmptyStockpile {
+                at: t,
+            }));
         }
         BakeryEvent::ArriveEmptyStockpile { at } => {
             if state.state().flour > 0 {
                 // Consume flour now and carry to bakery
                 state.state_mut().flour -= 1;
-                state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkLoadedToBakery { at }));
+                state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkLoadedToBakery {
+                    at,
+                }));
             } else {
                 // Nothing to pick up; return empty to bakery
                 state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkEmptyToBakery { at }));
             }
         }
         BakeryEvent::WalkLoadedToBakery { at } => {
-            let t = at + travel_time(state.state().bakery_distance_tiles, state.state().bakery_loaded_speed_tiles_per_month);
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveLoadedBakery { at: t }));
+            let t = at
+                + travel_time(
+                    state.state().bakery_distance_tiles,
+                    state.state().bakery_loaded_speed_tiles_per_month,
+                );
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveLoadedBakery {
+                at: t,
+            }));
         }
         BakeryEvent::ArriveLoadedBakery { at } => {
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::ProcessDone { at: at + state.state().bakery_job_time }));
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::ProcessDone {
+                at: at + state.state().bakery_job_time,
+            }));
         }
         BakeryEvent::ProcessDone { at } => {
             // Start loaded walk to granary (travel handled in Walk event)
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkLoadedToGranary { at }));
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkLoadedToGranary {
+                at,
+            }));
         }
         BakeryEvent::WalkLoadedToGranary { at } => {
-            let t = at + travel_time(state.state().bakery_distance_tiles, state.state().bakery_loaded_speed_tiles_per_month);
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveLoadedGranary { at: t }));
+            let t = at
+                + travel_time(
+                    state.state().bakery_distance_tiles,
+                    state.state().bakery_loaded_speed_tiles_per_month,
+                );
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveLoadedGranary {
+                at: t,
+            }));
         }
         BakeryEvent::ArriveLoadedGranary { at: _ } => {
             state.state_mut().bread += state.state().bakery_output_bread;
-            let t = state.now() + travel_time(state.state().bakery_distance_tiles, state.state().bakery_empty_speed_tiles_per_month);
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkEmptyToBakery { at: t }));
+            let t = state.now()
+                + travel_time(
+                    state.state().bakery_distance_tiles,
+                    state.state().bakery_empty_speed_tiles_per_month,
+                );
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkEmptyToBakery {
+                at: t,
+            }));
         }
         BakeryEvent::WalkEmptyToBakery { at } => {
-            let t = at + travel_time(state.state().bakery_distance_tiles, state.state().bakery_empty_speed_tiles_per_month);
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveEmptyBakery { at: t }));
+            let t = at
+                + travel_time(
+                    state.state().bakery_distance_tiles,
+                    state.state().bakery_empty_speed_tiles_per_month,
+                );
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::ArriveEmptyBakery {
+                at: t,
+            }));
         }
         BakeryEvent::ArriveEmptyBakery { at: _ } => {
             state.state_mut().idle_bakery_workers += 1;
@@ -257,7 +334,11 @@ fn handle_bakery_event(state: &mut State<SimState, PipelineEvent>, ev: BakeryEve
 }
 
 fn travel_time(distance_tiles: f64, speed_tiles_per_month: f64) -> f64 {
-    if speed_tiles_per_month <= 0.0 { 0.0 } else { distance_tiles / speed_tiles_per_month }
+    if speed_tiles_per_month <= 0.0 {
+        0.0
+    } else {
+        distance_tiles / speed_tiles_per_month
+    }
 }
 
 fn try_start_mill_jobs(state: &mut State<SimState, PipelineEvent>) {
@@ -270,7 +351,9 @@ fn try_start_mill_jobs(state: &mut State<SimState, PipelineEvent>) {
     if state.state().wheat > 0 {
         while state.state().idle_mill_workers > 0 {
             state.state_mut().idle_mill_workers -= 1;
-            state.schedule(PipelineEvent::Mill(MillEvent::WalkEmptyToStockpile { at: state.now() }));
+            state.schedule(PipelineEvent::Mill(MillEvent::WalkEmptyToStockpile {
+                at: state.now(),
+            }));
         }
     }
 }
@@ -285,7 +368,9 @@ fn try_start_bakery_jobs(state: &mut State<SimState, PipelineEvent>) {
     if state.state().flour > 0 {
         while state.state().idle_bakery_workers > 0 {
             state.state_mut().idle_bakery_workers -= 1;
-            state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkEmptyToStockpile { at: state.now() }));
+            state.schedule(PipelineEvent::Bakery(BakeryEvent::WalkEmptyToStockpile {
+                at: state.now(),
+            }));
         }
     }
 }
@@ -295,7 +380,9 @@ fn parse_arg<T: std::str::FromStr>(name: &str, default: T) -> T {
     while let Some(k) = args.next() {
         if k == name {
             if let Some(v) = args.next() {
-                if let Ok(parsed) = v.parse::<T>() { return parsed; }
+                if let Ok(parsed) = v.parse::<T>() {
+                    return parsed;
+                }
             }
         }
     }
@@ -305,16 +392,28 @@ fn parse_arg<T: std::str::FromStr>(name: &str, default: T) -> T {
 fn parse_arg_str(name: &str) -> Option<String> {
     let mut args = env::args().skip(1);
     while let Some(k) = args.next() {
-        if k == name { return args.next(); }
+        if k == name {
+            return args.next();
+        }
     }
     None
 }
 
-fn write_history_csv<P: AsRef<Path>>(path: P, history: &[State<SimState, PipelineEvent>]) -> std::io::Result<()> {
+fn write_history_csv<P: AsRef<Path>>(
+    path: P,
+    history: &[State<SimState, PipelineEvent>],
+) -> std::io::Result<()> {
     let mut f = File::create(path)?;
     writeln!(f, "months,wheat,flour,bread")?;
     for st in history {
-        writeln!(f, "{:.6},{},{},{}", st.now(), st.state().wheat, st.state().flour, st.state().bread)?;
+        writeln!(
+            f,
+            "{:.6},{},{},{}",
+            st.now(),
+            st.state().wheat,
+            st.state().flour,
+            st.state().bread
+        )?;
     }
     Ok(())
 }
@@ -336,17 +435,22 @@ fn main() {
     let bakery_distance_tiles: f64 = parse_arg("--bakery-distance", 10.0f64);
     // Speeds: parse legacy single-speed flags first for compatibility, then allow direction-specific overrides
     let bakery_default_speed: f64 = parse_arg("--bakery-walk-speed", 33.3f64);
-    let bakery_empty_speed_tiles_per_month: f64 = parse_arg("--bakery-empty-speed", bakery_default_speed);
-    let bakery_loaded_speed_tiles_per_month: f64 = parse_arg("--bakery-loaded-speed", bakery_default_speed);
+    let bakery_empty_speed_tiles_per_month: f64 =
+        parse_arg("--bakery-empty-speed", bakery_default_speed);
+    let bakery_loaded_speed_tiles_per_month: f64 =
+        parse_arg("--bakery-loaded-speed", bakery_default_speed);
     let bakery_job_time: f64 = parse_arg("--bakery-job-time", 3.0f64);
     let bakery_output_bread: u32 = parse_arg("--bakery-output", 8u32);
     // Default CSV outputs unless overridden via flags
-    let csv_file: String = parse_arg_str("--csv-file").unwrap_or_else(|| "pipeline.csv".to_string());
-    let events_file: String = parse_arg_str("--events-csv").unwrap_or_else(|| "pipeline_ev.csv".to_string());
+    let csv_file: String =
+        parse_arg_str("--csv-file").unwrap_or_else(|| "pipeline.csv".to_string());
+    let events_file: String =
+        parse_arg_str("--events-csv").unwrap_or_else(|| "pipeline_ev.csv".to_string());
     let farm_distance_tiles: f64 = parse_arg("--farm-distance", 100.0f64);
     let farm_default_speed: f64 = parse_arg("--farm-walk-speed", 33.3f64);
     let farm_empty_speed_tiles_per_month: f64 = parse_arg("--farm-empty-speed", farm_default_speed);
-    let farm_loaded_speed_tiles_per_month: f64 = parse_arg("--farm-loaded-speed", farm_default_speed);
+    let farm_loaded_speed_tiles_per_month: f64 =
+        parse_arg("--farm-loaded-speed", farm_default_speed);
 
     let mut engine = Engine::<SimState, PipelineEvent>::new(SimState {
         wheat: 0,
@@ -374,7 +478,10 @@ fn main() {
     });
 
     for _ in 0..farms {
-        engine.schedule(PipelineEvent::Farm(FarmEvent::WalkEmptyToFarm { at: 0.0, remaining: 0 }));
+        engine.schedule(PipelineEvent::Farm(FarmEvent::WalkEmptyToFarm {
+            at: 0.0,
+            remaining: 0,
+        }));
     }
 
     println!(

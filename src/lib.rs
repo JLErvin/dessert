@@ -77,14 +77,20 @@ impl<S, E: Event<S>> Scheduled<S, E> {
 }
 
 impl<S, E: Event<S>> PartialEq for Scheduled<S, E> {
-    fn eq(&self, other: &Self) -> bool { self.at.total_cmp(&other.at) == Ordering::Equal }
+    fn eq(&self, other: &Self) -> bool {
+        self.at.total_cmp(&other.at) == Ordering::Equal
+    }
 }
 impl<S, E: Event<S>> Eq for Scheduled<S, E> {}
 impl<S, E: Event<S>> PartialOrd for Scheduled<S, E> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 impl<S, E: Event<S>> Ord for Scheduled<S, E> {
-    fn cmp(&self, other: &Self) -> Ordering { self.at.total_cmp(&other.at).reverse() }
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.at.total_cmp(&other.at).reverse()
+    }
 }
 
 /// The simulation state visible to events.
@@ -124,7 +130,6 @@ impl<S, E: Event<S>> State<S, E> {
     pub fn schedule(&mut self, event: E) {
         self.queue.push(Scheduled::new(event));
     }
-
 }
 
 /// The engine drives the event loop and owns the `State`.
@@ -140,18 +145,30 @@ impl<S: Clone, E: Event<S> + Clone + std::fmt::Debug> Engine<S, E> {
     /// Create a new engine with initial user state.
     pub fn new(data: S) -> Self {
         let state = State::<S, E>::new(data);
-        let mut engine = Self { state, history: Vec::new(), events: Vec::new() };
+        let mut engine = Self {
+            state,
+            history: Vec::new(),
+            events: Vec::new(),
+        };
         engine.history.push(engine.state.clone());
         engine
     }
 
     /// Accessors to read the state and time (outside of events).
-    pub fn now(&self) -> Timestamp { self.state.now() }
-    pub fn state(&self) -> &S { self.state.state() }
-    pub fn state_mut(&mut self) -> &mut S { self.state.state_mut() }
+    pub fn now(&self) -> Timestamp {
+        self.state.now()
+    }
+    pub fn state(&self) -> &S {
+        self.state.state()
+    }
+    pub fn state_mut(&mut self) -> &mut S {
+        self.state.state_mut()
+    }
 
     /// Allow external scheduling prior to running.
-    pub fn schedule(&mut self, event: E) { self.state.schedule(event) }
+    pub fn schedule(&mut self, event: E) {
+        self.state.schedule(event)
+    }
 
     /// Run until the queue is empty or the time limit is reached.
     pub fn run_until(&mut self, until_time: Timestamp) {
@@ -162,21 +179,28 @@ impl<S: Clone, E: Event<S> + Clone + std::fmt::Debug> Engine<S, E> {
             }
             self.state.now = scheduled.at;
             // Log the event before execution
-            self.events.push((self.state.now, format!("{:?}", scheduled.event)));
+            self.events
+                .push((self.state.now, format!("{:?}", scheduled.event)));
             scheduled.event.execute(&mut self.state);
             self.history.push(self.state.clone());
         }
-        if self.state.now < until_time { self.state.now = until_time; }
+        if self.state.now < until_time {
+            self.state.now = until_time;
+        }
         if self.history.last().map(|s| s.now) != Some(self.state.now) {
             self.history.push(self.state.clone());
         }
     }
 
     /// Access the recorded state snapshots.
-    pub fn history(&self) -> &[State<S, E>] { &self.history }
+    pub fn history(&self) -> &[State<S, E>] {
+        &self.history
+    }
 
     /// Access the chronological event log.
-    pub fn events(&self) -> &[(Timestamp, String)] { &self.events }
+    pub fn events(&self) -> &[(Timestamp, String)] {
+        &self.events
+    }
 }
 #[cfg(test)]
 mod tests {
