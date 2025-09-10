@@ -1,0 +1,13 @@
+[package]
+name = "dessert"
+version = "0.1.0"
+edition = "2021"
+description = "A tiny, generic discrete-event simulation (DES) framework"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "dessert"
+path = "src/lib.rs"
+
+[dependencies]
+
